@@ -1,8 +1,9 @@
 {
+  "id": "/JOSEPH-GENERATION/",
   "name": "Joseph Generation",
   "short_name": "Joseph Gen",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/JOSEPH-GENERATION/",
+  "scope": "/JOSEPH-GENERATION/",
   "display": "standalone",
   "background_color": "#0f1520",
   "theme_color": "#1f5fd1",
