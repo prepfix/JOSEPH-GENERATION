@@ -204,7 +204,7 @@ let hashDone=false,songs=[],order=[],linkIdx=0,cur=null,editing=null,fs=18,isAdm
 if(firebaseConfig.apiKey==="PASTE_HERE"){$('cfgwarn').classList.remove('hide')}
 else{
   firebase.initializeApp(firebaseConfig);fdb=firebase.firestore();auth=firebase.auth();
-  fdb.collection('songs').orderBy('number').onSnapshot(s=>{
+  fdb.collection('joseph_songs').orderBy('number').onSnapshot(s=>{
     songs=s.docs.map(d=>({id:d.id,...d.data()}));
     if(cur){cur=songs.find(x=>x.id===cur.id)||cur}
     render();
@@ -425,11 +425,11 @@ async function save(){
   }
   try{
     if(editing){
-      await fdb.collection('songs').doc(editing.id).update({title,lyrics,youtube,links,audio});
+      await fdb.collection('joseph_songs').doc(editing.id).update({title,lyrics,youtube,links,audio});
       cur={...editing,title,lyrics,youtube,links,audio};show(cur);
     }else{
-      const cref=fdb.doc('meta/counter');let num;
-      const sref=fdb.collection('songs').doc();
+      const cref=fdb.doc('meta/joseph_counter');let num;
+      const sref=fdb.collection('joseph_songs').doc();
       await fdb.runTransaction(async tx=>{
         const c=await tx.get(cref);num=(c.exists?c.data().n:0)+1;
         tx.set(cref,{n:num});
@@ -441,7 +441,7 @@ async function save(){
 }
 async function del(){
   if(!cur||!confirm('Delete song '+cur.number+' - '+cur.title+'?'))return;
-  try{await fdb.collection('songs').doc(cur.id).delete();home()}catch(e){alert('Could not delete: '+e.message)}
+  try{await fdb.collection('joseph_songs').doc(cur.id).delete();home()}catch(e){alert('Could not delete: '+e.message)}
 }
 
 /* ===== Share on WhatsApp (long-press a song) ===== */
@@ -584,7 +584,7 @@ $('bf').onchange=async e=>{
   }catch(err){alert(err.message||'Could not read that file')}
 };
 async function addOne(it){
-  const cref=fdb.doc('meta/counter'),sref=fdb.collection('songs').doc();let num;
+  const cref=fdb.doc('meta/joseph_counter'),sref=fdb.collection('joseph_songs').doc();let num;
   const title=it.title,lyrics=it.lyrics,links=[...new Set((it.links||[]).filter(ytId))],youtube=links[0]||'';
   await fdb.runTransaction(async tx=>{
     const c=await tx.get(cref);num=(c.exists?c.data().n:0)+1;
