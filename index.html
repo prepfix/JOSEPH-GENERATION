@@ -398,12 +398,6 @@ function render(){
     const h=nzSong(s);return h.includes(qn)||qw.every(w=>h.includes(w));
   });
   const box=$('list');box.textContent='';
-  if(isAdmin){
-    const ab=document.createElement('div');ab.className='adminbar';
-    const bb=document.createElement('button');bb.className='g';bb.textContent='⬆ Bulk add';bb.onclick=openBulk;
-    const lb=document.createElement('button');lb.className='g';lb.textContent='🔗 Add links';lb.onclick=openLinks;
-    ab.append(bb,lb);box.append(ab);
-  }
   if(!q&&mode==='az')arr.sort((a,b)=>(a.title||'').localeCompare(b.title||'',undefined,{sensitivity:'base'}));
   order=arr.slice(); /* Prev/Next follow the list exactly as shown */
   const mk=(s)=>{
