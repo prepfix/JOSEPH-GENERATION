@@ -364,7 +364,15 @@ function dropMarks(l){
 const BRK=/^\s*[\(\[\*]*\s*(?:chorus|stanza|verse|refrain|bridge|kiitikio|ubeti|beti)\b\s*\d*\s*[:.\-\u2013]?\s*[\)\]\*]*\s*[:.\-\u2013]?\s*$|^\s*[-_*=~\u2022.\u2014\u2013]{3,}\s*$/i;
 const BRK2=/^\s*[\(\[\*]*\s*(?:chorus|stanza|kiitikio|ubeti)\b\s*\d*\s*[:.\-\u2013]|^\s*[\(\[]?\d+\s*[.):\-\u2013\]]\s*\S/i;
 const BRK3=/^\s*[\(\[\*]*\s*\d+\s*[.):\-\u2013\]\*]*\s*[\)\]\*]*\s*$/; /* a line holding only a verse number: 1  2.  (3) */
-function autoStanzas(t){const L=String(t||'').split('\n');if(L.filter(x=>x.trim()).length<8||L.some(x=>!x.trim()))return t;const o=[];for(let i=0;i<L.length;i+=4)o.push(L.slice(i,i+4).join('\n'));return o.join('\n\n')}
+function autoStanzas(t){
+  const L=String(t||'').split('\n');
+  if(L.filter(x=>x.trim()).length<8||L.some(x=>!x.trim()))return t; /* already has blank lines, or too short: leave as is */
+  /* the stanza length is where the first line comes back (a repeated chorus); otherwise 4 lines */
+  const f=nz(L[0]);let n=4;
+  for(let k=2;k<=8&&k<L.length;k++){if(nz(L[k])===f){n=k;break}}
+  const o=[];for(let i=0;i<L.length;i+=n)o.push(L.slice(i,i+n).join('\n'));
+  return o.join('\n\n');
+}
 function cleanLyrics(t){
   return capWords(String(t||'').replace(/\r\n?|[\u2028\u2029\u0085\v\f]/g,'\n')            /* every kind of line break */
     .replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff\u00ad\u180e]/g,'')            /* invisible characters (WhatsApp, Word, web pages) */
@@ -552,7 +560,7 @@ function step(d){
 /* every stanza / chorus (a blank line in the lyrics) gets its own box */
 function paintLyrics(t){
   var v=$('vl');v.textContent='';
-  var ly=cleanLyrics(t);
+  var ly=autoStanzas(cleanLyrics(t));
   if(!ly){v.textContent='(no lyrics yet)';return}
   v.textContent=ly; /* plain text: a blank line is just a gap between verses */
 }
@@ -595,7 +603,7 @@ function openForm(s){
 }
 async function save(){
   if(!fdb){alert('Firebase is not set up yet');return}
-  const title=capWords($('ti').value.trim()),lyrics=cleanLyrics($('ly').value),links=formLinks(),youtube=links[0]||'';
+  const title=capWords($('ti').value.trim()),lyrics=autoStanzas(cleanLyrics($('ly').value)),links=formLinks(),youtube=links[0]||'';
   if(!title){alert('Please enter a title');return}
   const bad=links.find(l=>!ytId(l));
   if(bad){alert('This link is not recognised:\n'+bad);return}
