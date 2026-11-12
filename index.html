@@ -167,7 +167,7 @@ sp.addEventListener('click',end);document.addEventListener('keydown',end,{once:t
 
   <div id="form" class="hide">
     <h2>Add song</h2>
-    <p class="note">The song number is assigned automatically. Once saved, it can be changed or removed from the song page.</p>
+    <p class="note">The song number is assigned automatically. Once saved, it can be changed from the song page.</p>
     <label>Title</label><input id="ti" autocapitalize="words" maxlength="150" placeholder="Leave empty to fill from a video link">
     <label>YouTube links</label><div id="lks"></div><button type="button" class="g" id="addlk" style="margin-top:2px">+ Add another link</button>
     <label>Lyrics</label>
@@ -225,7 +225,7 @@ Second line here</div>
 
   <div id="view" class="hide">
     <div class="bar">
-      <button class="g admin hide" id="edit">Edit</button><button class="d admin hide" id="del">Delete</button>
+      <button class="g admin hide" id="edit">Edit</button>
       <button class="g" id="fm">A−</button><button class="g" id="fp">A+</button><button class="g" id="shr">Share</button></div>
     <h2 id="vt"></h2>
     <div id="vl" class="lyrics"></div>
@@ -236,7 +236,6 @@ Second line here</div>
     </div>
   </div>
 </main>
-<div id="selbar" class="selbar hide"><span id="selc">0 selected</span><button class="dz" id="seldel" disabled>🗑 Delete</button><button class="g" id="seldone">Done</button></div>
 <footer>DEVELOPED BY CYRUS IRERI 0720872582</footer>
 
 <script>
@@ -279,8 +278,7 @@ const firebaseConfig = {
 /* =============================================================== */
 
 const $=id=>document.getElementById(id);
-let hashDone=false,songs=[],order=[],linkIdx=0,cur=null,editing=null,fs=18,isAdmin=true,fdb; /* no login: everyone can add, edit and delete */
-let selMode=false,selBusy=false,selBackup=true,selFrom='',selTo='';const sel=new Set(); /* admin bulk delete */
+let hashDone=false,songs=[],order=[],linkIdx=0,cur=null,editing=null,fs=18,isAdmin=true,fdb; /* no login: everyone can add and edit (songs cannot be deleted from the app) */
 
 let gotSnap=false;
 function listNote(t){const p=document.createElement('p');p.className='note';p.textContent=t;$('list').textContent='';$('list').append(p)}
@@ -365,10 +363,13 @@ function dropMarks(l){
 /* Lines that mark a new stanza / chorus: ---  ***  ...  or a label such as Chorus, Verse 2, Stanza 3, Kiitikio, Ubeti, or a numbered line like "2." */
 const BRK=/^\s*[\(\[\*]*\s*(?:chorus|stanza|verse|refrain|bridge|kiitikio|ubeti|beti)\b\s*\d*\s*[:.\-\u2013]?\s*[\)\]\*]*\s*[:.\-\u2013]?\s*$|^\s*[-_*=~\u2022.\u2014\u2013]{3,}\s*$/i;
 const BRK2=/^\s*[\(\[\*]*\s*(?:chorus|stanza|kiitikio|ubeti)\b\s*\d*\s*[:.\-\u2013]|^\s*[\(\[]?\d+\s*[.):\-\u2013\]]\s*\S/i;
+const BRK3=/^\s*[\(\[\*]*\s*\d+\s*[.):\-\u2013\]\*]*\s*[\)\]\*]*\s*$/; /* a line holding only a verse number: 1  2.  (3) */
 function autoStanzas(t){const L=String(t||'').split('\n');if(L.filter(x=>x.trim()).length<8||L.some(x=>!x.trim()))return t;const o=[];for(let i=0;i<L.length;i+=4)o.push(L.slice(i,i+4).join('\n'));return o.join('\n\n')}
 function cleanLyrics(t){
-  return capWords(String(t||'').replace(/\r\n?/g,'\n').replace(/[\u00a0\u200b\ufeff]/g,' ')
-    .split('\n').flatMap(l=>BRK.test(l)?['']:BRK2.test(l)?['',l]:[l]).map(dropMarks).filter(l=>l!==null).join('\n')   /* strip trailing spaces; whitespace-only lines become empty */
+  return capWords(String(t||'').replace(/\r\n?|[\u2028\u2029\u0085\v\f]/g,'\n')            /* every kind of line break */
+    .replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u2064\ufeff\u00ad\u180e]/g,'')            /* invisible characters (WhatsApp, Word, web pages) */
+    .replace(/[\u00a0\u1680\u2000-\u200a\u202f\u205f\u3000]/g,' ')
+    .split('\n').flatMap(l=>BRK.test(l)||BRK3.test(l)?['']:BRK2.test(l)?['',l]:[l]).map(dropMarks).filter(l=>l!==null).join('\n')   /* strip trailing spaces; whitespace-only lines become empty */
     .replace(/\n{3,}/g,'\n\n')                              /* many blank lines -> exactly one (stanza break) */
     .replace(/^\n+|\n+$/g,''));                              /* no blank lines at start or end */
 }
@@ -389,14 +390,11 @@ function render(){
     const h=nzSong(s);return h.includes(qn)||qw.every(w=>h.includes(w));
   });
   const box=$('list');box.textContent='';
-  if(sel.size){const ids=new Set(songs.map(s=>s.id));[...sel].forEach(id=>{if(!ids.has(id))sel.delete(id)})} /* drop songs that are gone */
   if(isAdmin){
     const ab=document.createElement('div');ab.className='adminbar';
-    const bb=document.createElement('button');bb.className='g';bb.textContent='⬆ Bulk add';bb.onclick=openBulk;bb.disabled=selMode;
-    const db=document.createElement('button');db.className='d';db.textContent=selMode?'✕ Stop deleting':'🗑 Bulk delete';db.onclick=()=>setSelMode(!selMode);
-    const lb=document.createElement('button');lb.className='g';lb.textContent='🔗 Add links';lb.onclick=openLinks;lb.disabled=selMode;
-    ab.append(bb,lb,db);box.append(ab);
-    if(selMode)box.append(selTools(arr));
+    const bb=document.createElement('button');bb.className='g';bb.textContent='⬆ Bulk add';bb.onclick=openBulk;
+    const lb=document.createElement('button');lb.className='g';lb.textContent='🔗 Add links';lb.onclick=openLinks;
+    ab.append(bb,lb);box.append(ab);
   }
   if(!q&&mode==='az')arr.sort((a,b)=>(a.title||'').localeCompare(b.title||'',undefined,{sensitivity:'base'}));
   order=arr.slice(); /* Prev/Next follow the list exactly as shown */
@@ -409,10 +407,6 @@ function render(){
     const p=document.createElement('button');p.type='button';p.className='pbtn';p.textContent='▶';
     if(getLinks(s).length){p.title='Play';p.setAttribute('aria-label','Play '+s.title);p.onclick=e=>{e.stopPropagation();show(s,true)}}
     else{p.disabled=true;p.style.visibility='hidden';p.setAttribute('aria-hidden','true');p.tabIndex=-1} /* no video: leave the space blank */
-    if(selMode){
-      const cb=document.createElement('input');cb.type='checkbox';cb.className='sck';cb.tabIndex=-1;cb.checked=sel.has(s.id);cb.setAttribute('aria-label','Select #'+s.number);
-      d.classList.toggle('on',cb.checked);d.append(cb,n,w);d.onclick=()=>toggleSel(s.id,d);return d;
-    }
     d.append(n,w,p);d.onclick=()=>show(s);return d;
   };
   if(songs.length&&!q){
@@ -640,105 +634,7 @@ async function save(){
     }
   }catch(e){alert('Could not save: '+e.message)}
 }
-async function del(){
-  if(!cur||!confirm('Delete song '+cur.number+' - '+cur.title+'?'))return;
-  try{await fdb.collection('joseph_songs').doc(cur.id).delete();home()}catch(e){alert('Could not delete: '+e.message)}
-}
-
-/* ===== Bulk delete (admin) ===== */
-function setSelMode(on){if(selBusy)return;selMode=!!on&&isAdmin;if(!selMode)sel.clear();render();selShow(!$('list').classList.contains('hide'))}
-function selShow(listShown){
-  const on=selMode&&isAdmin&&listShown!==false;
-  $('selbar').classList.toggle('hide',!on);document.body.classList.toggle('selecting',on);updSel();
-}
-function updSel(){
-  const n=sel.size;$('selc').textContent=n+' selected';
-  $('seldel').disabled=!n||selBusy;$('seldel').textContent=selBusy?'Deleting…':'🗑 Delete'+(n?' '+n:'');$('seldone').disabled=selBusy;
-  const c=$('selclr');if(c)c.disabled=!n||selBusy;
-}
-function toggleSel(id,d){
-  if(selBusy)return;
-  if(sel.has(id))sel.delete(id);else sel.add(id);
-  d.classList.toggle('on',sel.has(id));d.querySelector('.sck').checked=sel.has(id);updSel();
-}
-function selTools(arr){
-  const w=document.createElement('div');w.className='seltools';
-  const p=document.createElement('div');p.className='s';
-  p.textContent='Tap songs to select them for deleting. Search first to narrow the list, or select a range of numbers.';w.append(p);
-  const r1=document.createElement('div');r1.className='row';
-  const all=document.createElement('button');all.className='g';all.textContent='Select all shown ('+arr.length+')';all.disabled=!arr.length;
-  all.onclick=()=>{arr.forEach(s=>sel.add(s.id));render()};
-  const none=document.createElement('button');none.className='g';none.textContent='Unselect shown';
-  none.onclick=()=>{arr.forEach(s=>sel.delete(s.id));render()};
-  const clr=document.createElement('button');clr.className='g';clr.id='selclr';clr.textContent='Clear all';
-  clr.onclick=()=>{sel.clear();render()};
-  r1.append(all,none,clr);w.append(r1);
-  const r2=document.createElement('div');r2.className='row';
-  const mkN=(v,ph,set)=>{const i=document.createElement('input');i.type='number';i.min='1';i.inputMode='numeric';i.placeholder=ph;i.value=v;i.oninput=()=>set(i.value);return i};
-  const a=mkN(selFrom,'From #',v=>selFrom=v),b=mkN(selTo,'To #',v=>selTo=v);
-  const go=document.createElement('button');go.className='g';go.textContent='Select #range';
-  go.onclick=()=>{
-    let lo=parseInt(selFrom,10),hi=parseInt(selTo||selFrom,10);
-    if(!lo||!hi){alert('Type the first and last song numbers, e.g. 120 to 250');return}
-    if(lo>hi)[lo,hi]=[hi,lo];
-    const hit=songs.filter(s=>Number(s.number)>=lo&&Number(s.number)<=hi);
-    if(!hit.length){alert('There are no songs from #'+lo+' to #'+hi+'.');return}
-    hit.forEach(s=>sel.add(s.id));render();
-  };
-  const to=document.createElement('span');to.className='s';to.textContent='to';
-  r2.append(a,to,b,go);w.append(r2);
-  const lb=document.createElement('label'),ck=document.createElement('input');ck.type='checkbox';ck.checked=selBackup;ck.onchange=()=>selBackup=ck.checked;
-  lb.append(ck,document.createTextNode('Download a backup file of the songs before deleting (it can be put back with Bulk add)'));w.append(lb);
-  return w;
-}
-function backupSongs(list){
-  const data={app:'Joseph Generation',saved:new Date().toISOString(),songs:list.map(s=>({number:s.number,title:s.title||'',lyrics:s.lyrics||'',links:rawLinks(s)}))};
-  const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,1)],{type:'application/json'}));
-  const d=new Date(),pad=x=>String(x).padStart(2,'0');
-  const a=document.createElement('a');a.href=url;
-  a.download='joseph-deleted-'+list.length+'-songs-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+'.json';
-  document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
-}
-async function bulkDel(){
-  if(!fdb||!isAdmin||selBusy)return;
-  const list=songs.filter(s=>sel.has(s.id)).sort((a,b)=>a.number-b.number),n=list.length;
-  if(!n)return;
-  const names=list.slice(0,8).map(s=>'#'+s.number+'  '+capWords(s.title)).join('\n')+(n>8?'\n…and '+(n-8)+' more':'');
-  if(!confirm('Delete '+n+' song'+(n===1?'':'s')+'?\n\n'+names+'\n\nThis cannot be undone.'))return;
-  if(n>=10){
-    const t=prompt('You are deleting '+n+' songs. To confirm, type DELETE');
-    if(t===null)return;
-    if(t.trim().toUpperCase()!=='DELETE'){alert('Nothing was deleted (DELETE was not typed).');return}
-  }
-  if(selBackup){try{backupSongs(list)}catch(e){if(!confirm('The backup file could not be made. Delete anyway?'))return}}
-  selBusy=true;updSel();
-  const gone=new Set();let err=null;
-  try{
-    for(let i=0;i<n;i+=400){ /* Firestore allows up to 500 changes per batch */
-      const part=list.slice(i,i+400),b=fdb.batch();
-      part.forEach(s=>b.delete(fdb.collection('joseph_songs').doc(s.id)));
-      $('selc').textContent='Deleting '+Math.min(i+part.length,n)+' of '+n+'…';
-      await b.commit();part.forEach(s=>{gone.add(s.id);sel.delete(s.id)});
-    }
-  }catch(e){err=e}
-  selBusy=false;
-  if(err)alert('Stopped after '+gone.size+' of '+n+' songs.\n'+err.message+'\n\nThe songs not deleted are still selected - you can try again.');
-  if(gone.size)await fixCounter(gone);
-  if(!err){sel.clear();selMode=false;if(gone.size)alert(gone.size+' song'+(gone.size===1?'':'s')+' deleted.')}
-  render();selShow(!$('list').classList.contains('hide'));
-}
-/* If the highest-numbered songs were deleted, offer to reuse those numbers for the next songs added */
-async function fixCounter(gone){
-  try{
-    const left=songs.filter(s=>!gone.has(s.id)),maxLeft=left.reduce((m,s)=>Math.max(m,Number(s.number)||0),0);
-    const cref=fdb.doc('meta/joseph_counter'),c=await cref.get(),cn=c.exists?(c.data().n||0):0;
-    if(cn<=maxLeft)return;
-    if(!confirm('The highest song numbers were deleted, so the last song is now #'+(maxLeft||'(none)')+'.\n\nShould the next new song be #'+(maxLeft+1)+' instead of #'+(cn+1)+'?\n\nOK = reuse the numbers   Cancel = leave them unused'))return;
-    await fdb.runTransaction(async tx=>{const d=await tx.get(cref);if((d.exists?d.data().n:0)===cn)tx.set(cref,{n:maxLeft})});
-  }catch(e){alert('The songs were deleted, but the next song number could not be changed: '+e.message)}
-}
-$('seldel').onclick=bulkDel;
-$('seldone').onclick=()=>setSelMode(false);
+function selShow(){} /* kept as a no-op: songs cannot be deleted from the app */
 
 /* ===== Share ===== */
 function songLink(sg){return location.origin+location.pathname+'#song-'+sg.number}
@@ -1093,7 +989,6 @@ function goHome(){
 }
 $('hm2').onclick=goHome;$('hmH').onclick=goHome;
 $('edit').onclick=()=>openForm(cur);
-$('del').onclick=del;
 $('fp').onclick=()=>{fs=Math.min(40,fs+2);$('vl').style.fontSize=fs+'px'};
 $('fm').onclick=()=>{fs=Math.max(12,fs-2);$('vl').style.fontSize=fs+'px'};
 function setFull(on){
