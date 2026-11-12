@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Songs: anyone can read, add and edit. Nobody can delete.
+    match /joseph_songs/{songId} {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
+
+    // Song-number counter used when adding a song. Never deletable.
+    match /meta/joseph_counter {
+      allow read, create, update: if true;
+      allow delete: if false;
+    }
+
+    // Everything else stays locked.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
