@@ -158,7 +158,7 @@ var gone=false;function end(){if(gone)return;gone=true;sp.classList.add('out');s
 sp.addEventListener('click',end);document.addEventListener('keydown',end,{once:true});setTimeout(end,3200)})()</script>
 
 <header>
-  <h1><span style="text-transform:uppercase;font-weight:800">🎵 Joseph Generation</span><span><button class="g" id="hmH" type="button" title="Home">🏠 Home</button> <button class="l" id="thm" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button><button class="l" id="adm">Admin</button></span></h1>
+  <h1><span style="text-transform:uppercase;font-weight:800">🎵 Joseph Generation</span><span><button class="g" id="hmH" type="button" title="Home">🏠 Home</button> <button class="l" id="thm" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button></span></h1>
   <div class="row"><input id="q" type="search" placeholder="Search number, title or lyrics"><button id="add">+ Add</button></div>
 </header>
 <main>
@@ -167,7 +167,7 @@ sp.addEventListener('click',end);document.addEventListener('keydown',end,{once:t
 
   <div id="form" class="hide">
     <h2>Add song</h2>
-    <p class="note">The song number is assigned automatically. Once saved, only the admin can change or remove it.</p>
+    <p class="note">The song number is assigned automatically. Once saved, it can be changed or removed from the song page.</p>
     <label>Title</label><input id="ti" autocapitalize="words" maxlength="150" placeholder="Leave empty to fill from a video link">
     <label>YouTube links</label><div id="lks"></div><button type="button" class="g" id="addlk" style="margin-top:2px">+ Add another link</button>
     <label>Lyrics</label>
@@ -268,7 +268,6 @@ Second line here</div>
 </script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script>
 /* ====== PASTE YOUR FIREBASE CONFIG HERE (see setup steps) ====== */
 const firebaseConfig = {
@@ -280,7 +279,7 @@ const firebaseConfig = {
 /* =============================================================== */
 
 const $=id=>document.getElementById(id);
-let hashDone=false,songs=[],order=[],linkIdx=0,cur=null,editing=null,fs=18,isAdmin=false,fdb,auth;
+let hashDone=false,songs=[],order=[],linkIdx=0,cur=null,editing=null,fs=18,isAdmin=true,fdb; /* no login: everyone can add, edit and delete */
 let selMode=false,selBusy=false,selBackup=true,selFrom='',selTo='';const sel=new Set(); /* admin bulk delete */
 
 let gotSnap=false;
@@ -289,7 +288,7 @@ listNote('Loading songs…');
 setTimeout(function(){if(!gotSnap)listNote('Songs are taking long to load. Check your internet connection. If this stays, the songs cannot be reached from this web address - tell the developer.')},10000);
 if(firebaseConfig.apiKey==="PASTE_HERE"){$('cfgwarn').classList.remove('hide')}
 else{
-  firebase.initializeApp(firebaseConfig);fdb=firebase.firestore();auth=firebase.auth();
+  firebase.initializeApp(firebaseConfig);fdb=firebase.firestore();
   fdb.collection('joseph_songs').orderBy('number').onSnapshot(s=>{
     gotSnap=true;songs=s.docs.map(d=>({id:d.id,...d.data()}));
     if(cur){cur=songs.find(x=>x.id===cur.id)||cur}
@@ -297,7 +296,7 @@ else{
     if(cur&&!$('view').classList.contains('hide'))paintNav();
     if(!hashDone&&songs.length)openFromHash();
   },e=>{gotSnap=true;listNote('Could not load songs: '+e.message);alert('Could not load songs: '+e.message)});
-  auth.onAuthStateChanged(u=>{isAdmin=!!u;if(!u){selMode=false;sel.clear()}$('adm').textContent=u?'Sign out':'Admin';document.querySelectorAll('.admin').forEach(b=>b.classList.toggle('hide',!u));render();selShow(!$('list').classList.contains('hide'))});
+  document.querySelectorAll('.admin').forEach(b=>b.classList.remove('hide'));
 }
 
 /* ===== Links (a song can have several) ===== */
@@ -1077,12 +1076,6 @@ $('lngo').onclick=async()=>{
 };
 $('lncancel').onclick=()=>home();
 
-$('adm').onclick=async()=>{
-  if(!auth){alert('Firebase is not set up yet');return}
-  if(isAdmin){auth.signOut();return}
-  const email=prompt('Admin email');if(!email)return;const pw=prompt('Admin password');if(!pw)return;
-  try{await auth.signInWithEmailAndPassword(email,pw)}catch(e){alert('Sign-in failed')}
-};
 $('q').oninput=()=>{if($('list').classList.contains('hide'))home();else render()};
 $('add').onclick=()=>openForm();
 $('addlk').onclick=()=>addLinkRow('').focus();
